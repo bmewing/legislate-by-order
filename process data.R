@@ -8,6 +8,9 @@ library(magrittr)
 #data source: https://www.federalregister.gov/executive-orders
 #trump data is being sourced from the federal register through their api
 
+nixon = read_csv("data/nixon.csv")
+ford = read_csv("data/ford.csv")
+carter = read_csv("data/carter.csv")
 reagan = read_csv("data/reagan.csv")
 ghw_bush = read_csv("data/george h w bush.csv")
 clinton = read_csv("data/documents_signed_by_william_j_clinton_of_type_presidential_document_and_of_presidential_document_type_executive_order.csv")
@@ -19,6 +22,27 @@ trump = httr::GET("https://www.federalregister.gov/documents/search.json?conditi
   `$`("results")
 
 write_csv(trump,"data/documents_signed_by_donald_trump_of_type_presidential_document_and_of_presidential_document_type_executive_order.csv")
+
+nixon %<>%
+  mutate(start_date = lubridate::as_date("1969-01-20"),
+         signing_date = lubridate::as_date(signing_date,format="%m/%d/%Y")) %>% 
+  mutate(daysInOffice = difftime(signing_date,start_date,units="days")) %>% 
+  group_by(daysInOffice) %>% 
+  summarise(nixonOrders = n())
+
+ford %<>%
+  mutate(start_date = lubridate::as_date("1974-08-09"),
+         signing_date = lubridate::as_date(signing_date,format="%m/%d/%Y")) %>% 
+  mutate(daysInOffice = difftime(signing_date,start_date,units="days")) %>% 
+  group_by(daysInOffice) %>% 
+  summarise(fordOrders = n())
+
+carter %<>%
+  mutate(start_date = lubridate::as_date("1977-01-20"),
+         signing_date = lubridate::as_date(signing_date,format="%m/%d/%Y")) %>% 
+  mutate(daysInOffice = difftime(signing_date,start_date,units="days")) %>% 
+  group_by(daysInOffice) %>% 
+  summarise(carterOrders = n())
 
 reagan %<>%
   mutate(start_date = lubridate::as_date("1981-01-20"),
@@ -63,6 +87,9 @@ trump %<>%
   summarise(trumpOrders = n())
 
 orders = data_frame(daysInOffice = seq(0,8*365.25,1)) %>% 
+  left_join(nixon) %>% 
+  left_join(ford) %>% 
+  left_join(carter) %>% 
   left_join(reagan) %>% 
   left_join(ghw_bush) %>% 
   left_join(clinton) %>% 
@@ -72,17 +99,15 @@ orders = data_frame(daysInOffice = seq(0,8*365.25,1)) %>%
 
 orders[is.na(orders)] = 0
 
-for(i in 2:nrow(orders)){
-  if(orders$reaganOrders[i] == 0) orders$reaganOrders[i] = orders$reaganOrders[i-1] else orders$reaganOrders[i] = orders$reaganOrders[i]+orders$reaganOrders[i-1]
-  if(orders$ghw_bushOrders[i] == 0) orders$ghw_bushOrders[i] = orders$ghw_bushOrders[i-1] else orders$ghw_bushOrders[i] = orders$ghw_bushOrders[i]+orders$ghw_bushOrders[i-1]
-  if(orders$clintonOrders[i] == 0) orders$clintonOrders[i] = orders$clintonOrders[i-1] else orders$clintonOrders[i] = orders$clintonOrders[i]+orders$clintonOrders[i-1]
-  if(orders$gw_bushOrders[i] == 0) orders$gw_bushOrders[i] = orders$gw_bushOrders[i-1] else orders$gw_bushOrders[i] = orders$gw_bushOrders[i]+orders$gw_bushOrders[i-1]
-  if(orders$obamaOrders[i] == 0) orders$obamaOrders[i] = orders$obamaOrders[i-1] else orders$obamaOrders[i] = orders$obamaOrders[i]+orders$obamaOrders[i-1]
-  if(orders$trumpOrders[i] == 0) orders$trumpOrders[i] = orders$trumpOrders[i-1] else orders$trumpOrders[i] = orders$trumpOrders[i]+orders$trumpOrders[i-1]
+for(i in 2:ncol(orders)){
+  orders[[i]] = cumsum(orders[[i]])
 }
 
 orders %>% 
   plot_ly(x = ~daysInOffice) %>% 
+  add_lines(y = ~nixonOrders,name="Nixon") %>% 
+  add_lines(y = ~fordOrders,name="Ford") %>% 
+  add_lines(y = ~carterOrders,name="Carter") %>% 
   add_lines(y = ~reaganOrders,name="Reagan") %>% 
   add_lines(y = ~ghw_bushOrders,name="G.H.W. Bush") %>% 
   add_lines(y = ~clintonOrders,name="Clinton") %>% 
