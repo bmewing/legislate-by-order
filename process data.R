@@ -21,6 +21,15 @@ trump = httr::GET("https://www.federalregister.gov/documents/search.json?conditi
   jsonlite::fromJSON() %>% 
   `$`("results")
 
+#There's a delta between when executive orders are signed and when they're published meaning the chart created later has a chance of under-reporting the number of orders signed. This is a simple correction to account for that.
+timeToPublish = difftime(lubridate::as_date(trump$publication_date),lubridate::as_date(trump$signing_date),unit="days") %>% 
+  as.numeric() %>% 
+  median()
+#Now when we calculate how long Trump has been in office, we can apply the time it takes the regsiter to publish orders and adjust the view to reflect reality.
+trumpDaysInOffice = difftime(Sys.Date(),lubridate::as_date("2017-01-20"),units="days") %>% 
+  as.numeric() %>% 
+  `-`(timeToPublish)
+
 write_csv(trump,"data/documents_signed_by_donald_trump_of_type_presidential_document_and_of_presidential_document_type_executive_order.csv")
 
 nixon %<>%
@@ -114,4 +123,7 @@ orders %>%
   add_lines(y = ~gw_bushOrders,name="G.W. Bush") %>% 
   add_lines(y = ~obamaOrders,name="Obama") %>% 
   add_lines(y = ~trumpOrders,name="Trump") %>% 
-  layout(xaxis = list(title="Days in Office"),yaxis = list(title="# of Executive Orders Signed"))
+  layout(shapes=list(type='line', x0= trumpDaysInOffice, x1= trumpDaysInOffice, y0=0, y1=400, line=list(dash='dot', width=1)),
+         xaxis = list(title="Days in Office"),
+         yaxis = list(title="# of Executive Orders Signed"),
+         title = 'How have presidents used Executive Orders over the course of their terms?')
