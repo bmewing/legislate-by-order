@@ -112,7 +112,17 @@ for(i in 2:ncol(orders)){
   orders[[i]] = cumsum(orders[[i]])
 }
 
+ymax = orders %>% 
+  filter(daysInOffice <= ceiling(trumpDaysInOffice*1.1)) %>% 
+  select(-daysInOffice) %>% 
+  lapply(max) %>% 
+  unlist() %>% 
+  max() %>% 
+  `*`(1.1) %>% 
+  ceiling()
+
 orders %>% 
+  filter(daysInOffice <= ceiling(trumpDaysInOffice*1.1)) %>% 
   plot_ly(x = ~daysInOffice) %>% 
   add_lines(y = ~nixonOrders,name="Nixon") %>% 
   add_lines(y = ~fordOrders,name="Ford") %>% 
@@ -123,7 +133,7 @@ orders %>%
   add_lines(y = ~gw_bushOrders,name="G.W. Bush") %>% 
   add_lines(y = ~obamaOrders,name="Obama") %>% 
   add_lines(y = ~trumpOrders,name="Trump") %>% 
-  layout(shapes=list(type='line', x0= trumpDaysInOffice, x1= trumpDaysInOffice, y0=0, y1=400, line=list(dash='dot', width=1)),
+  layout(shapes=list(type='line', x0= trumpDaysInOffice, x1= trumpDaysInOffice, y0=0, y1=ymax, line=list(dash='dot', width=1)),
          xaxis = list(title="Days in Office"),
          yaxis = list(title="# of Executive Orders Signed"),
          title = 'How have presidents used Executive Orders over the course of their terms?')
